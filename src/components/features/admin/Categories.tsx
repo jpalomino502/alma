@@ -1,43 +1,42 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
 import { Plus, Edit2, Trash2, FolderTree, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
 export const Categories = () => {
-  const defaultCategories = ["Seamaster", "Constellation", "Speedmaster", "De Ville"]
-
-  const [categories, setCategories] = useState<string[]>(() => {
-    const raw = localStorage.getItem("alma_admin_categories")
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as string[]
-        return parsed.length ? parsed : defaultCategories
-      } catch {
-        return defaultCategories
-      }
-    }
-    return defaultCategories
-  })
+  const [categories, setCategories] = useState<string[]>([])
 
   const [newCategory, setNewCategory] = useState("")
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
 
-  const products: { id: number; collection: string }[] = (() => {
-    const raw = localStorage.getItem("alma_admin_products")
-    if (!raw) return []
-    try {
-      return JSON.parse(raw)
-    } catch {
-      return []
+  const [products, setProducts] = useState<{ id: number; category: string }[]>([])
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [catRes, prodRes] = await Promise.all([
+          fetch(`${API_BASE}/api/categories`, { headers: { Accept: "application/json" } }),
+          fetch(`${API_BASE}/api/products`, { headers: { Accept: "application/json" } }),
+        ])
+        const cats = await catRes.json()
+        const prods = await prodRes.json()
+        setCategories(Array.isArray(cats) ? cats.map((c: any) => c.name) : [])
+        setProducts(Array.isArray(prods) ? prods.map((p: any) => ({ id: p.id, category: p.category })) : [])
+      } catch {
+        setCategories([])
+        setProducts([])
+      }
     }
-  })()
+    fetchAll()
+  }, [])
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     products.forEach((p) => {
-      counts[p.collection] = (counts[p.collection] || 0) + 1
+      counts[p.category] = (counts[p.category] || 0) + 1
     })
     categories.forEach((c) => {
       if (counts[c] === undefined) counts[c] = 0
@@ -45,11 +44,9 @@ export const Categories = () => {
     return counts
   }, [products, categories])
 
-  useEffect(() => {
-    localStorage.setItem("alma_admin_categories", JSON.stringify(categories))
-  }, [categories])
+  
 
-  const addCategory = () => {
+  const addCategory = async () => {
     const name = newCategory.trim()
     if (!name) {
       toast.error("Ingresa un nombre válido")
@@ -59,9 +56,20 @@ export const Categories = () => {
       toast.error("Esta categoría ya existe")
       return
     }
-    setCategories((prev) => [...prev, name])
-    setNewCategory("")
-    toast.success("Categoría agregada")
+    try {
+      const res = await fetch(`${API_BASE}/api/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) throw new Error()
+      const cat = await res.json()
+      setCategories((prev) => [...prev, cat.name])
+      setNewCategory("")
+      toast.success("Categoría agregada")
+    } catch {
+      toast.error("No se pudo agregar la categoría")
+    }
   }
 
   const startEdit = (name: string) => {
@@ -69,53 +77,67 @@ export const Categories = () => {
     setEditingValue(name)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     const oldName = editingCategory
     const newName = editingValue.trim()
-
     if (!oldName || !newName) {
       toast.error("Nombre inválido")
       setEditingCategory(null)
       setEditingValue("")
       return
     }
-
     if (oldName === newName) {
       setEditingCategory(null)
       setEditingValue("")
       return
     }
-
     if (categories.includes(newName) && newName !== oldName) {
       toast.error("Esta categoría ya existe")
       return
     }
-
-    setCategories((prev) => prev.map((c) => (c === oldName ? newName : c)))
-
-    const raw = localStorage.getItem("alma_admin_products")
-    const existing = raw ? (JSON.parse(raw) as any[]) : []
-    const updatedProducts = existing.map((p) => (p.collection === oldName ? { ...p, collection: newName } : p))
-    localStorage.setItem("alma_admin_products", JSON.stringify(updatedProducts))
-
-    setEditingCategory(null)
-    setEditingValue("")
-    toast.success("Categoría actualizada")
+    try {
+      const listRes = await fetch(`${API_BASE}/api/categories`, { headers: { Accept: "application/json" } })
+      const cats = await listRes.json()
+      const cat = Array.isArray(cats) ? cats.find((c: any) => c.name === oldName) : null
+      if (!cat) throw new Error()
+      const res = await fetch(`${API_BASE}/api/categories/${cat.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ name: newName }),
+      })
+      if (!res.ok) throw new Error()
+      setCategories((prev) => prev.map((c) => (c === oldName ? newName : c)))
+      setEditingCategory(null)
+      setEditingValue("")
+      toast.success("Categoría actualizada")
+    } catch {
+      toast.error("No se pudo actualizar la categoría")
+    }
   }
 
-  const deleteCategory = (name: string) => {
+  const deleteCategory = async (name: string) => {
     const count = categoryCounts[name] || 0
     if (count > 0) {
       toast.error(`No puedes eliminar una categoría con ${count} productos`)
       return
     }
-    setCategories((prev) => prev.filter((c) => c !== name))
-    toast.success("Categoría eliminada")
+    try {
+      const listRes = await fetch(`${API_BASE}/api/categories`, { headers: { Accept: "application/json" } })
+      const cats = await listRes.json()
+      const cat = Array.isArray(cats) ? cats.find((c: any) => c.name === name) : null
+      if (!cat) throw new Error()
+      const res = await fetch(`${API_BASE}/api/categories/${cat.id}`, { method: "DELETE", headers: { Accept: "application/json" } })
+      if (!res.ok) throw new Error()
+      setCategories((prev) => prev.filter((c) => c !== name))
+      toast.success("Categoría eliminada")
+    } catch {
+      toast.error("No se pudo eliminar la categoría")
+    }
   }
 
   return (
     <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+      <div>
         <h1 className="text-4xl font-extralight tracking-[0.3em] mb-2 text-luxury-text uppercase">Categorías</h1>
         <p className="text-muted-foreground tracking-wider mb-12">Gestiona las categorías de productos</p>
 

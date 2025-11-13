@@ -11,17 +11,68 @@ export const LoginSidebar = ({ isOpen, onClose }: LoginSidebarProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000";
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Inicio de sesión exitoso");
-    onClose();
+  const extractErrorMessage = (data: any) => {
+    try {
+      if (data && typeof data === "object") {
+        if (data.errors && typeof data.errors === "object") {
+          const keys = Object.keys(data.errors);
+          if (keys.length > 0) {
+            const arr = (data.errors as any)[keys[0]];
+            if (Array.isArray(arr) && arr.length > 0) return String(arr[0]);
+          }
+        }
+        if (data.message) return String(data.message);
+      }
+    } catch {}
+    return null;
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Cuenta creada exitosamente");
-    onClose();
+    try {
+      const res = await fetch(`${API_BASE}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = extractErrorMessage(data) || "Error al iniciar sesión";
+        toast.error(msg);
+        return;
+      }
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      toast.success("Inicio de sesión exitoso");
+      onClose();
+    } catch (err) {
+      toast.error("No se pudo conectar con el servidor");
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/api/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = extractErrorMessage(data) || "Error al crear la cuenta";
+        toast.error(msg);
+        return;
+      }
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      toast.success("Cuenta creada exitosamente");
+      onClose();
+    } catch (err) {
+      toast.error("No se pudo conectar con el servidor");
+    }
   };
 
   useEffect(() => {
@@ -47,14 +98,15 @@ export const LoginSidebar = ({ isOpen, onClose }: LoginSidebarProps) => {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-1000 transition-opacity"
+        className="fixed inset-0 bg-black/50 z-[9998] transition-opacity"
         onClick={onClose}
       />
 
       <div
-        className="fixed inset-y-0 right-0 w-full sm:max-w-md bg-white z-1001 shadow-2xl flex flex-col"
+        className="fixed inset-y-0 right-0 w-full sm:max-w-md bg-white z-[9999] shadow-2xl flex flex-col"
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-1 overflow-y-auto">
           <div className="relative p-6 min-h-full flex flex-col justify-between">
@@ -141,7 +193,7 @@ export const LoginSidebar = ({ isOpen, onClose }: LoginSidebarProps) => {
                       </div>
                       <button
                         type="submit"
-                        className="w-full bg-luxury-burgundy hover:bg-luxury-burgundyHover text-white py-2 px-4 rounded transition-colors tracking-wider"
+                        className="w-full bg-luxury-burgundy hover:bg-luxury-burgundyHover text-white py-2 px-4 rounded transition-colors tracking-wider cursor-pointer"
                       >
                         INICIAR SESIÓN
                       </button>
@@ -210,12 +262,13 @@ export const LoginSidebar = ({ isOpen, onClose }: LoginSidebarProps) => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
+                          minLength={6}
                           className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:ring-2 focus:ring-luxury-burgundy"
                         />
                       </div>
                       <button
                         type="submit"
-                        className="w-full bg-luxury-burgundy hover:bg-luxury-burgundyHover text-white py-2 px-4 rounded transition-colors tracking-wider"
+                        className="w-full bg-white hover:bg-luxury-burgundyHover text-black py-2 px-4 rounded transition-colors tracking-wider cursor-pointer"
                       >
                         CREAR CUENTA
                       </button>

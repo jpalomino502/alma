@@ -1,4 +1,4 @@
-import craftsmanship from "@/assets/craftsmanship.jpg";
+import bgTwo from "@/assets/bg-two.jpg";
 
 export const AboutView = () => {
   return (
@@ -6,23 +6,23 @@ export const AboutView = () => {
       {/* Hero */}
       <section
         className="h-[60vh] transparent relative overflow-hidden flex items-center justify-center bg-center bg-cover"
-        style={{ backgroundImage: `url(${craftsmanship})` }}
+        style={{ backgroundImage: `url(${bgTwo})` }}
       >
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 text-center text-white px-8">
-          <h1 className="text-[clamp(2.5rem,6vw,5rem)] font-extralight tracking-[0.5em] uppercase">
+          <h1 className="text-4xl md:text-6xl font-extralight tracking-widest uppercase">
             Sobre Nosotros
           </h1>
         </div>
       </section>
 
       {/* Contenido */}
-      <div className="max-w-[900px] mx-auto px-8 py-20 default">
-        <div className="space-y-12 text-luxury-text default">
+      <div className="max-w-4xl mx-auto px-8 py-20">
+        <div className="space-y-12 text-luxury-text">
           {/* Sobre Nosotros */}
           <section>
-            <h2 className="text-3xl font-light tracking-wider mb-6">Sobre Nosotros</h2>
-            <p className="text-lg leading-relaxed text-muted-foreground">
+            <h2 className="text-3xl md:text-4xl font-extralight tracking-wider mb-6">Sobre Nosotros</h2>
+            <p className="text-base md:text-lg font-light tracking-wide leading-relaxed text-muted-foreground">
               ALMA Accesorios es una tienda especializada en complementos de bisutería
               ubicada en Bucaramanga (Santander), Colombia. Nos dedicamos a brindar piezas
               modernas y elegantes que realzan la belleza y autenticidad de cada persona,
@@ -34,8 +34,8 @@ export const AboutView = () => {
 
           {/* Nuestra Historia */}
           <section>
-            <h2 className="text-3xl font-light tracking-wider mb-6">Nuestra Historia</h2>
-            <p className="text-lg leading-relaxed text-muted-foreground">
+            <h2 className="text-3xl md:text-4xl font-extralight tracking-wider mb-6">Nuestra Historia</h2>
+            <p className="text-base md:text-lg font-light tracking-wide leading-relaxed text-muted-foreground">
               Nacimos del amor por los accesorios que cuentan historias, con la visión de que
               cada pieza aporte un toque especial a la vida cotidiana. Desde nuestros inicios,
               hemos trabajado con dedicación en curar una colección de bisutería que celebre la
@@ -45,8 +45,8 @@ export const AboutView = () => {
 
           {/* Nuestros Productos */}
           <section>
-            <h2 className="text-3xl font-light tracking-wider mb-6">Nuestros Productos</h2>
-            <p className="text-lg leading-relaxed text-muted-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-extralight tracking-wider mb-6">Nuestros Productos</h2>
+            <p className="text-base md:text-lg font-light tracking-wide leading-relaxed text-muted-foreground mb-4">
               En ALMA encontrarás una amplia variedad de accesorios: aretes, collares, pulseras,
               anillos y más. Nuestras piezas están elaboradas principalmente en acero inoxidable,
               un material reconocido por su durabilidad y resistencia al desgaste diario.
@@ -61,8 +61,8 @@ export const AboutView = () => {
 
           {/* Estilo y Valores */}
           <section>
-            <h2 className="text-3xl font-light tracking-wider mb-6">Estilo y Valores</h2>
-            <p className="text-lg leading-relaxed text-muted-foreground">
+            <h2 className="text-3xl md:text-4xl font-extralight tracking-wider mb-6">Estilo y Valores</h2>
+            <p className="text-base md:text-lg font-light tracking-wide leading-relaxed text-muted-foreground">
               Creemos que los accesorios no solo complementan un atuendo, sino que también expresan
               la personalidad de quien los usa. Por ello, nuestra misión es ofrecer productos de
               alta calidad que empoderen a nuestros clientes y resalten su autenticidad y estilo
@@ -75,7 +75,7 @@ export const AboutView = () => {
 
           {/* Diferenciadores */}
           <section className="border-t border-border pt-12">
-            <h2 className="text-3xl font-light tracking-wider mb-6">Diferenciadores</h2>
+            <h2 className="text-3xl md:text-4xl font-extralight tracking-wider mb-6">Diferenciadores</h2>
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl mb-2 text-black">Diseño único y actual</h3>
@@ -110,7 +110,7 @@ export const AboutView = () => {
 
           {/* Cierre */}
           <section>
-            <p className="text-lg leading-relaxed text-muted-foreground">
+            <p className="text-base md:text-lg font-light tracking-wide leading-relaxed text-muted-foreground">
               Nos enorgullece ser una marca comprometida con la calidad, el estilo y la satisfacción
               de nuestros clientes. Te invitamos a conocer ALMA Accesorios, ya sea visitando nuestra
               tienda en Bucaramanga o explorando nuestro catálogo en línea, y a encontrar ese

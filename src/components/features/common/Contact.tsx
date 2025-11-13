@@ -9,13 +9,13 @@ export const ContactView = () => {
 
   return (
     <div className="min-h-screen bg-white pt-24 md:pt-32">
-      <div className="max-w-[1400px] mx-auto px-8 py-16">
+      <div className="max-w-6xl mx-auto px-8 py-16">
         <div className="justify-center">
-          <h1 className="text-4xl font-light mb-4 text-center text-luxury-text">CONTACTO</h1>
+          <h1 className="text-3xl md:text-5xl font-extralight tracking-wider mb-4 text-center text-luxury-text">CONTACTO</h1>
           <p className="text-center pb-16 text-muted-foreground tracking-wide">Estamos aquí para ayudarte</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12">
+        <div className="max-w-5xl mx-auto">
           <div className="bg-white rounded-lg p-8 shadow-sm">
             <div className="mb-6">
               <h2 className="text-2xl font-light tracking-wider mb-2">Envíanos un mensaje</h2>
@@ -83,66 +83,7 @@ export const ContactView = () => {
                 ENVIAR MENSAJE
               </button>
             </form>
-          </div>
-
-          {/* Información de contacto */}
-          <div className="space-y-8">
-            <div className="bg-white rounded-lg p-8 shadow-sm">
-              <h2 className="text-2xl font-light tracking-wider mb-6">Información de contacto</h2>
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 bg-luxury-burgundy/10 rounded-full flex items-center justify-center">
-                    <Mail className="text-luxury-text" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-light mb-1">Email</h3>
-                    <p className="text-muted-foreground">info@alma-watches.com</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 bg-luxury-burgundy/10 rounded-full flex items-center justify-center">
-                    <Phone className="text-luxury-text" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-light mb-1">Teléfono</h3>
-                    <p className="text-muted-foreground">+41 22 123 4567</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 bg-luxury-burgundy/10 rounded-full flex items-center justify-center">
-                    <MapPin className="text-luxury-text" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-light mb-1">Boutique Principal</h3>
-                    <p className="text-muted-foreground">
-                      Rue du Rhône 123<br />
-                      1204 Ginebra, Suiza
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-8 shadow-sm">
-              <h2 className="text-2xl font-light tracking-wider mb-6">Horario de atención</h2>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Lunes - Viernes</span>
-                  <span>9:00 - 19:00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sábado</span>
-                  <span>10:00 - 18:00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Domingo</span>
-                  <span>Cerrado</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          </div>          
         </div>
       </div>
     </div>

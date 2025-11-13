@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { routes, adminRoutes } from "@/routes";
 import { CartProvider } from "@/context/CartContext";
+import { RequireAuth, RequireAdmin } from "@/components/auth/RouteGuards";
 
 const queryClient = new QueryClient();
 
@@ -29,11 +30,19 @@ const App = () => (
         <TitleManager />
         <Routes>
           <Route element={<MainLayout />}>
-            {routes.map(({ path, element: Element }) => (
-              <Route key={path} path={path} element={<Element />} />
-            ))}
+            {routes.map(({ path, element: Element }) => {
+              const isProtected = path === "/profile";
+              const wrapped = isProtected ? (
+                <RequireAuth>
+                  <Element />
+                </RequireAuth>
+              ) : (
+                <Element />
+              );
+              return <Route key={path} path={path} element={wrapped} />;
+            })}
           </Route>
-          <Route element={<AdminLayout />}>
+          <Route element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
             {adminRoutes.map(({ path, element: Element }) => (
               <Route key={path} path={path} element={<Element />} />
             ))}

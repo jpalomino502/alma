@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Save, ArrowLeft, X, Upload, ImageIcon, Trash2, GripVertical } from "lucide-react"
+import { ArrowLeft, X, Upload, Trash2, GripVertical } from "lucide-react"
 import { toast } from "sonner"
 
 type CreateProductProps = {
@@ -12,14 +12,16 @@ type CreateProductProps = {
   initialProduct?: {
     id?: number
     name?: string
-    collection?: string
+    category?: string
     price?: string
+    price_label?: string
     stock?: number | ""
     image?: string
     images?: string[]
     sku?: string
     description?: string
     specs?: string
+    specifications?: string[]
   } | null
   asModal?: boolean
   onCancel?: () => void
@@ -34,106 +36,229 @@ export const CreateProduct = ({
   onSaved,
 }: CreateProductProps) => {
   const navigate = useNavigate()
-  const defaultCategories = ["Seamaster", "Constellation", "Speedmaster", "De Ville"]
+  const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
+  const [categories, setCategories] = useState<string[]>([])
+  const [category, setCategory] = useState<string>("")
   const [name, setName] = useState("")
-  const [categories] = useState<string[]>(() => {
-    const raw = localStorage.getItem("alma_admin_categories")
-    if (raw) {
+  useEffect(() => {
+    const loadCats = async () => {
       try {
-        const parsed = JSON.parse(raw) as string[]
-        return parsed.length ? parsed : defaultCategories
+        const res = await fetch(`${API_BASE}/api/categories`, { headers: { Accept: "application/json" } })
+        const data = await res.json()
+        const names = Array.isArray(data) ? data.map((c: any) => c.name) : []
+        setCategories(names)
+        if (!initialProduct && !category && names.length > 0) setCategory(names[0])
       } catch {
-        return defaultCategories
+        setCategories([])
       }
     }
-    return defaultCategories
-  })
-  const [collection, setCollection] = useState<string>(() => {
-    const raw = localStorage.getItem("alma_admin_categories")
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as string[]
-        if (parsed.length) return parsed[0]
-      } catch {}
-    }
-    return defaultCategories[0]
-  })
+    loadCats()
+  }, [])
   const [price, setPrice] = useState("")
   const [stock, setStock] = useState<number | "">("")
   const [sku, setSku] = useState("")
   const [description, setDescription] = useState("")
   const [specs, setSpecs] = useState("")
   const [images, setImages] = useState<string[]>([])
-  const [newImageUrl, setNewImageUrl] = useState("")
-  const [uploadMethod, setUploadMethod] = useState<"url" | "file">("url")
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const resolveImageUrl = (img?: string) => {
+    if (!img) return "/placeholder.svg"
+    if (/^https?:\/\//i.test(img)) return img
+    if (img.startsWith("data:")) return img
+    return `${API_BASE}/storage/${img}`
+  }
+
+  const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("blob"))), type, quality)
+    })
+
+  const loadImageFromFile = (file: File) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = URL.createObjectURL(file)
+    })
+
+  const compressImageToFile = async (file: File) => {
+    const img = await loadImageFromFile(file)
+    const maxDim = 1600
+    const ratio = Math.min(1, maxDim / Math.max(img.width, img.height))
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.max(1, Math.round(img.width * ratio))
+    canvas.height = Math.max(1, Math.round(img.height * ratio))
+    const ctx = canvas.getContext("2d")!
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    let quality = 0.8
+    let blob = await canvasToBlob(canvas, "image/jpeg", quality)
+    while (blob.size > 2 * 1024 * 1024 && quality > 0.5) {
+      quality -= 0.1
+      blob = await canvasToBlob(canvas, "image/jpeg", quality)
+    }
+    const outFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" })
+    const dataUrl = await new Promise<string>((resolve) => {
+      const r = new FileReader()
+      r.onloadend = () => resolve(r.result as string)
+      r.readAsDataURL(outFile)
+    })
+    return { file: outFile, dataUrl }
+  }
+
+  const processFiles = async (files: File[]) => {
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue
+      try {
+        const { file, dataUrl } = await compressImageToFile(f)
+        setImages((prev) => [...prev, dataUrl])
+        setImageFiles((prev) => [...prev, file])
+      } catch {}
+    }
+  }
 
   useEffect(() => {
     if (initialProduct) {
       setName(initialProduct.name ?? "")
-      setCollection(initialProduct.collection ?? categories[0])
-      setPrice(initialProduct.price ?? "")
+      setCategory(initialProduct.category ?? categories[0])
+      setPrice(initialProduct.price ?? initialProduct.price_label ?? "")
       setStock(initialProduct.stock ?? "")
       setSku(initialProduct.sku ?? "")
       setDescription(initialProduct.description ?? "")
-      setSpecs(initialProduct.specs ?? "")
-      setImages(initialProduct.images ?? [])
+      setSpecs(
+        initialProduct.specs ?? (Array.isArray(initialProduct.specifications) ? initialProduct.specifications.join("\n") : "")
+      )
+      setImages(initialProduct.images ?? (initialProduct.image ? [initialProduct.image] : []))
     }
   }, [initialProduct, categories])
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    const namePart = norm(name).slice(0, 4)
+    const catPart = norm(category).slice(0, 3)
+    const rand = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(2, 6)
+    setSku(`${catPart}-${namePart}-${rand}`)
+  }, [name, category])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        setImages((prev) => [...prev, result])
-      }
-      reader.readAsDataURL(file)
-    })
+    await processFiles(Array.from(files))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault()
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    processFiles(Array.from(files))
+  }
+
+  useEffect(() => {
+    const onPaste = async (e: any) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i]
+        if (it.type && it.type.startsWith("image/")) {
+          const f = it.getAsFile()
+          if (f) files.push(f)
+        }
+      }
+      if (files.length > 0) await processFiles(files)
+    }
+    window.addEventListener("paste", onPaste)
+    return () => window.removeEventListener("paste", onPaste)
+  }, [])
+
+  const handleSubmit = async (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.()
 
     if (!name || !price || stock === "" || images.length === 0) {
       toast.error("Completa nombre, precio, stock y al menos una imagen")
       return
     }
 
-    const raw = localStorage.getItem("alma_admin_products")
-    const existing = raw ? (JSON.parse(raw) as any[]) : []
-    const id = mode === "edit" && initialProduct?.id ? initialProduct.id : Date.now()
+    const parsePriceNumber = (label: string) => {
+      const cleaned = label.replace(/[^0-9.,]/g, "").replace(/,/g, ".")
+      const num = Number.parseFloat(cleaned)
+      return Number.isFinite(num) ? num : 0
+    }
 
-    const product = {
-      id,
+    const specsArray = specs
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+
+    const useFileUpload = imageFiles.length > 0
+    const imageToSend = images[0]
+    const safeImage = imageToSend && imageToSend.startsWith("data:") && imageToSend.length > 1024 ? null : imageToSend || null
+    const safeImages = images.filter((img) => !(img.startsWith("data:") && img.length > 1024))
+
+    const payload = {
       name,
-      collection,
-      price,
+      category,
+      price_label: price,
+      price_number: parsePriceNumber(price),
       stock: typeof stock === "number" ? stock : Number.parseInt(String(stock) || "0", 10),
-      image: images[0],
-      images,
+      image: safeImage,
+      images: safeImages,
       sku,
       description,
-      specs,
+      specifications: specsArray,
     }
 
-    let updated: any[] = []
-    if (mode === "edit" && initialProduct?.id) {
-      updated = existing.map((p) => (p.id === initialProduct.id ? product : p))
-      toast.success("Producto actualizado")
-    } else {
-      updated = [product, ...existing]
-      toast.success("Producto creado")
-    }
-    localStorage.setItem("alma_admin_products", JSON.stringify(updated))
+    try {
+      const url = mode === "edit" && initialProduct?.id ? `${API_BASE}/api/products/${initialProduct.id}` : `${API_BASE}/api/products`
+      const method = mode === "edit" && initialProduct?.id ? "PUT" : "POST"
+      let res: Response
+      if (useFileUpload) {
+        const fd = new FormData()
+        fd.append("name", name)
+        fd.append("category", category)
+        fd.append("price_label", price)
+        fd.append("price_number", String(parsePriceNumber(price)))
+        fd.append("stock", String(typeof stock === "number" ? stock : Number.parseInt(String(stock) || "0", 10)))
+        fd.append("sku", sku)
+        if (description) fd.append("description", description)
+        imageFiles[0] && fd.append("image", imageFiles[0])
+        imageFiles.forEach((f) => fd.append("images[]", f))
+        // mantener rutas/URLs existentes no-base64
+        safeImages.forEach((u) => {
+          if (typeof u === "string" && !u.startsWith("data:")) fd.append("images[]", u)
+        })
+        specsArray.forEach((s) => fd.append("specifications[]", s))
+        res = await fetch(url, {
+          method,
+          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: fd,
+        })
+      } else {
+        res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(payload),
+        })
+      }
+      if (!res.ok) {
+        if (res.status === 422) {
+          const err = await res.json().catch(() => null)
+          const messages = err?.errors ? Object.values(err.errors).flat() : [err?.message || "Datos inválidos"]
+          toast.error(String(messages[0] || "Verifica los campos obligatorios"))
+          return
+        }
+        throw new Error("Error al guardar el producto")
+      }
+      const saved = await res.json()
+      toast.success(mode === "edit" ? "Producto actualizado" : "Producto creado")
 
-    if (asModal) {
-      onSaved?.(product)
-      onCancel?.()
-    } else {
-      navigate("/admin/products")
+      if (asModal) {
+        onSaved?.(saved)
+        onCancel?.()
+      } else {
+        navigate("/admin/products")
+      }
+    } catch (err) {
+      toast.error("No se pudo guardar el producto")
     }
   }
 
@@ -169,11 +294,11 @@ export const CreateProduct = ({
           </div>
           <div>
             <label className="block text-xs tracking-[0.15em] text-luxury-text uppercase mb-2 font-light">
-              Colección
+              Categoría
             </label>
             <select
-              value={collection}
-              onChange={(e) => setCollection(e.target.value)}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 bg-white text-sm tracking-wide focus:outline-none focus:ring-1 focus:ring-luxury-burgundy transition-colors rounded-md"
             >
               {categories.map((c) => (
@@ -207,13 +332,13 @@ export const CreateProduct = ({
             />
           </div>
           <div>
-            <label className="block text-xs tracking-[0.15em] text-luxury-text uppercase mb-2 font-light">SKU</label>
+            <label className="block text-xs tracking-[0.15em] text-luxury-text uppercase mb-2 font-light">SKU (auto)</label>
             <input
               type="text"
               value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 bg-white text-sm tracking-wide focus:outline-none focus:ring-1 focus:ring-luxury-burgundy transition-colors rounded-md"
-              placeholder="WSM-001"
+              readOnly
+              className="w-full px-4 py-3 border border-gray-200 bg-gray-100 text-sm tracking-wide rounded-md"
+              placeholder="Se genera automáticamente"
             />
           </div>
         </div>
@@ -249,65 +374,22 @@ export const CreateProduct = ({
             Galería de Imágenes {images.length > 0 && `(${images.length})`}
           </label>
 
-          <div className="flex gap-2 mb-4">
-            <button
-              type="button"
-              onClick={() => setUploadMethod("url")}
-              className={`px-4 py-2 text-xs tracking-wider uppercase rounded-md transition-colors ${
-                uploadMethod === "url" ? "bg-luxury-green text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+          <div className="mb-4">
+            <label
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-luxury-green transition-colors bg-gray-50"
             >
-              Por URL
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadMethod("file")}
-              className={`px-4 py-2 text-xs tracking-wider uppercase rounded-md transition-colors ${
-                uploadMethod === "file" ? "bg-luxury-green text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              Subir Archivo
-            </button>
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                <p className="text-sm text-gray-600 tracking-wide">
+                  <span className="font-light">Click para subir</span> o arrastra y suelta, o pega
+                </p>
+                <p className="text-xs text-gray-500 tracking-wide">PNG, JPG, WebP (MAX. 5MB)</p>
+              </div>
+              <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
+            </label>
           </div>
-
-          {uploadMethod === "url" ? (
-            <div className="flex gap-2 mb-4">
-              <input
-                type="url"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-200 bg-white text-sm tracking-wide focus:outline-none focus:ring-1 focus:ring-luxury-burgundy transition-colors rounded-md"
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const url = newImageUrl.trim()
-                  if (!url) return
-                  setImages((prev) => [...prev, url])
-                  setNewImageUrl("")
-                  toast.success("Imagen agregada")
-                }}
-                className="bg-luxury-green text-white px-6 py-3 text-sm tracking-[0.12em] uppercase font-light hover:opacity-90 transition-opacity rounded-md flex items-center gap-2"
-              >
-                <ImageIcon size={16} />
-                Agregar
-              </button>
-            </div>
-          ) : (
-            <div className="mb-4">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-luxury-green transition-colors bg-gray-50">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600 tracking-wide">
-                    <span className="font-light">Click para subir</span> o arrastra y suelta
-                  </p>
-                  <p className="text-xs text-gray-500 tracking-wide">PNG, JPG, WebP (MAX. 5MB)</p>
-                </div>
-                <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
-              </label>
-            </div>
-          )}
 
           {images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -322,7 +404,7 @@ export const CreateProduct = ({
                     </div>
                   )}
                   <img
-                    src={img || "/placeholder.svg"}
+                    src={resolveImageUrl(img)}
                     alt={`Producto ${idx + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -365,9 +447,9 @@ export const CreateProduct = ({
         <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            className="bg-luxury-green text-white px-8 py-3 text-sm tracking-[0.12em] uppercase font-light hover:opacity-90 transition-opacity flex items-center gap-2 rounded-md"
+            onClick={handleSubmit}
+            className="border border-gray-200 px-8 py-3 text-sm tracking-[0.12em] uppercase font-light text-white bg-[#314737] hover:bg-[#314737]/60 transition-colors rounded-md"
           >
-            <Save size={18} />
             {mode === "edit" ? "Actualizar" : "Guardar Producto"}
           </button>
           <button
@@ -376,7 +458,7 @@ export const CreateProduct = ({
               if (asModal) onCancel?.()
               else navigate("/admin/products")
             }}
-            className="border border-gray-200 px-8 py-3 text-sm tracking-[0.12em] uppercase font-light hover:bg-luxury-gray/60 transition-colors rounded-md"
+            className="border border-gray-200 px-8 py-3 text-sm tracking-[0.12em] uppercase font-light hover:bg-zinc-300 transition-colors rounded-md"
           >
             Cancelar
           </button>
@@ -387,9 +469,9 @@ export const CreateProduct = ({
 
   if (asModal) {
     return (
-      <div className="fixed inset-0 z-1000 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-        <div className="relative z-1001 w-[95vw] max-w-4xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="absolute inset-0 bg-black/50 z-10 pointer-events-auto" onClick={onCancel} />
+        <div className="relative z-20 w-[95vw] max-w-4xl pointer-events-auto">
           <div className="bg-white rounded-lg shadow-xl border border-gray-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div>

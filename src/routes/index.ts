@@ -4,6 +4,8 @@ import { ProductsView, ProductDetailView } from "@/components/features/products"
 import { NotFoundView, ContactView } from "@/components/features/common";
 import {CartView} from "@/components/features/cart";
 import { AboutView } from "@/components/features/about";
+import { ProfileView } from "@/components/features/profile";
+import { PaymentResponse } from "@/components/features/checkout";
 import { Dashboard, Products as AdminProducts, Orders, Settings, Categories } from "@/components/features/admin";
   
 export interface AppRoute {
@@ -14,6 +16,8 @@ export interface AppRoute {
 
 export const routes: AppRoute[] = [
   { path: "/", element: HomeView, title: "Inicio | Alma" },
+  { path: "/profile", element: ProfileView, title: "Perfil | Alma" },
+  { path: "/payment-response", element: PaymentResponse, title: "Respuesta de Pago | Alma" },
   { path: "/about", element: AboutView, title: "Sobre nosotros | Alma" },
   { path: "/products", element: ProductsView, title: "Colección | Alma" },
   { path: "/products/:id", element: ProductDetailView, title: "Detalle de Producto | Alma" },

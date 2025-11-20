@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Package, ShoppingCart, Users, AlertTriangle, DollarSign, ArrowUpRight } from "lucide-react"
+import makeResolveImage from "@/lib/image"
 
 type AdminProduct = { id: number; name: string; category: string; stock: number; images?: string[] }
 type OrderItem = { id: number; name: string; price_number?: number; quantity: number }
@@ -16,11 +17,7 @@ export const Dashboard = () => {
 
   const API_BASE = (import.meta as any).env?.VITE_API_BASE
 
-  const resolveImageUrl = (img?: string | null) => {
-    if (!img) return "/placeholder.svg"
-    if (/^https?:\/\//i.test(img)) return img
-    return `${API_BASE}/storage/${img}`
-  }
+  const resolveImageUrl = makeResolveImage(API_BASE)
 
   const fetchAll = async () => {
     try {

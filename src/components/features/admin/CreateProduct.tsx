@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import makeResolveImage from "@/lib/image"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, X, Upload, Trash2, GripVertical } from "lucide-react"
 import { addToast } from "@heroui/react"
@@ -62,12 +63,7 @@ export const CreateProduct = ({
   const [specs, setSpecs] = useState("")
   const [images, setImages] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
-  const resolveImageUrl = (img?: string) => {
-    if (!img) return "/placeholder.svg"
-    if (/^https?:\/\//i.test(img)) return img
-    if (img.startsWith("data:")) return img
-    return `${API_BASE}/storage/${img}`
-  }
+  const resolveImageUrl = makeResolveImage(API_BASE)
 
   const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
     new Promise<Blob>((resolve, reject) => {
